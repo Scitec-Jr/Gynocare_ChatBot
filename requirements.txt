@@ -1,0 +1,9 @@
+streamlit
+langchain
+langchain-groq
+chromadb
+pandas
+openpyxl
+python-dotenv
+tiktoken
+sentence_transformers
