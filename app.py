@@ -1,9 +1,9 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage
 
-import chain as chatbot_chain
+import requests
 
 load_dotenv()
 
@@ -33,9 +33,7 @@ def exibir_messages() -> None:
             with st.chat_message("assistant", avatar="assistant"):
                 st.markdown(message.content)
 
-# Inicializa a cadeia do chatbot (se ainda não houver)
-if "chain_model" not in st.session_state:
-    st.session_state["chain_model"] = chatbot_chain.create_chain()
+API_URL = os.getenv("API_URL", "http://localhost:8000/chat")
 
 # Input do usuário
 user_input = st.chat_input("Digite sua mensagem aqui...", key="input")
@@ -45,24 +43,24 @@ if user_input:
     st.session_state["messages"].append(human_msg)
     st.session_state["chat_history"].append(human_msg)
 
-    # 2) Obtém as mensagens do banco (lista de SystemMessage) e o raciocínio correspondente
-    database_messages, reasoning = chatbot_chain.get_database_responses(
-        pergunta_usuario=user_input,
-        chat_history=get_historico(),
-        nome_colecao=os.getenv("NOME_COLECAO_DB", "qa_excel_collection"),
-        diretorio_db=os.getenv("DIRETORIO_DB")
-    )
+    # 2) Chama a API
+    hist_payload = []
+    for msg in get_historico():
+        role = "user" if isinstance(msg, HumanMessage) else "assistant"
+        hist_payload.append({"role": role, "content": msg.content})
+    payload = {"user_input": user_input, "chat_history": hist_payload}
+    try:
+        resp = requests.post(API_URL, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        resposta_texto = data.get("response", "")
+        reasoning = data.get("reasoning", {})
+    except Exception as e:
+        resposta_texto = "Erro ao consultar a API."
+        reasoning = {}
 
-    # 3) Invoca a cadeia LLM, passando o histórico e a lista de SystemMessage
-    llm_input = {
-        "user_input": user_input,
-        "chat_history": get_historico(),
-        "database_responses": database_messages  # AGORA é lista[SystemMessage]
-    }
-    llm_response = st.session_state["chain_model"].invoke(llm_input)
-
-    # 4) Armazena a resposta do LLM no estado
-    ai_msg = AIMessage(content=llm_response)
+    # 3) Armazena a resposta no estado
+    ai_msg = AIMessage(content=resposta_texto)
     st.session_state["messages"].append(ai_msg)
     st.session_state["chat_history"].append(ai_msg)
     st.session_state["reasonings"].append(reasoning)
