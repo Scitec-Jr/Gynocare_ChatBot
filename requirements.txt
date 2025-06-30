@@ -7,3 +7,4 @@ openpyxl
 python-dotenv
 tiktoken
 sentence_transformers
+protobuf<5
