@@ -1,6 +1,12 @@
 import os
 import json
 import pandas as pd
+try:
+    import pysqlite3  # type: ignore
+    import sys
+    sys.modules["sqlite3"] = pysqlite3
+except Exception:
+    pass
 import chromadb
 from chromadb.utils import embedding_functions
 

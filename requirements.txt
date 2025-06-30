@@ -8,3 +8,4 @@ python-dotenv
 tiktoken
 sentence_transformers
 protobuf<5
+pysqlite3-binary
